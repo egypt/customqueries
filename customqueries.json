@@ -1,0 +1,143 @@
+{
+  "queries":[
+    {
+      "name": "Kerberoastable Admins",
+      "queryList":[
+        {
+          "final":true,
+          "query":
+            "MATCH (n:Group) WHERE n.objectsid =~ $sid WITH n MATCH p=(n)<-[MemberOf*1..]-(m {hasspn: true}) RETURN p",
+          "allowCollapse": true,
+          "props": {
+            "sid": "(?i)S-1-5-.*-512"
+          }
+        }
+      ]
+    },
+    {
+      "name": "All Kerberoastable Users",
+      "queryList":[
+        {
+          "final":true,
+          "requireNodeSelect": false,
+          "query": "MATCH (n {hasspn: true}) RETURN n",
+          "allowCollapse": true,
+          "props": {}
+        }
+      ]
+    },
+
+    {
+      "name": "Where can owned users RDP",
+      "queryList":[
+        {
+          "final":true,
+          "requireNodeSelect": false,
+          "query": "MATCH p=(m:User {owned: true})-[r:MemberOf|CanRDP*1..]->(n:Computer) RETURN p",
+          "allowCollapse": true,
+          "props": {}
+        }
+      ]
+    },
+
+    {
+      "name": "Users with most local admin rights",
+      "queryList":[
+        {
+          "final":true,
+          "requireNodeSelect": false,
+          "query": "MATCH (U:User)-[r:MemberOf|AdminTo*1..]->(C:Computer) WITH U.name as n, COUNT(DISTINCT(C)) AS c RETURN n,c ORDER BY c DESC LIMIT 5",
+          "allowCollapse": true,
+          "props": {}
+        }
+      ]
+    },
+    {
+      "name": "All Owned Nodes",
+      "queryList":[
+        {
+          "final":true,
+          "requireNodeSelect": false,
+          "query": "MATCH (n {owned: true}) RETURN n",
+          "allowCollapse": true,
+          "props": {}
+        }
+      ]
+    },
+    {
+      "name": "Find computers with owned Admins",
+      "queryList": [
+        {
+          "final": true,
+          "query": "MATCH p=shortestPath((n:User {owned:true})-[r:AdminTo|MemberOf*1..]->(c:Computer)) return p",
+          "allowCollapse": false
+        }
+      ]
+    },
+    {
+      "name": "Find owned Groups",
+      "queryList":[
+        {
+          "final":true,
+          "requireNodeSelect": false,
+          "query": "MATCH (n:User {owned: true})-[r:MemberOf]->(g:Group) RETURN g",
+          "allowCollapse": true,
+          "props": {}
+        }
+      ]
+    },
+    {
+      "name": "Find owned Domain Admins",
+      "queryList":[
+        {
+          "final": true,
+          "title": "Select a domain...",
+          "query": "MATCH (n:Group) WHERE n.name =~ $name AND n.owned=true WITH n MATCH p=(n)<-[r:MemberOf*1..]-(m) RETURN p",
+          "props": {
+            "name": "(?i).*DOMAIN ADMINS.*"
+          },
+          "allowCollapse": false
+        }
+      ]
+    },
+    {
+      "name": "Find Shortest Path from owned Node to Domain Admin",
+      "queryList": [
+        {
+          "final": false,
+          "title": "Select a Domain Admin group...",
+          "query": "MATCH (n:Group) WHERE n.name =~ $name RETURN n.name ORDER BY n.name DESC",
+          "props": {
+            "name": "(?i).*DOMAIN ADMINS.*"
+          }
+        },
+        {
+          "final": true,
+          "query": "MATCH (n:User),(m:Group {name:$result}),p=shortestPath((n {owned:true})-[r:MemberOf|AdminTo|HasSession|Contains|GpLink|Owns|DCSync|AllExtendedRights|ForceChangePassword|GenericAll|GenericWrite|WriteDacl|WriteOwner*1..]->(m)) RETURN p",
+          "allowCollapse": true,
+          "endNode":"{}"
+        }
+      ]
+    },
+    {
+      "name": "Find all other Rights Domain Users shouldn't have",
+      "queryList": [
+        {
+          "final": true,
+          "query": "MATCH p=(m:Group)-[r:Owns|WriteDacl|GenericAll|WriteOwner|ExecuteDCOM|GenericWrite|AllowedToDelegate|ForceChangePassword]->(n:Computer) WHERE m.objectid ENDS WITH '-513' OR m.objectsid ENDS WITH '-515' OR m.objectsid ENDS WITH 'S-1-5-11' OR m.objectsid ENDS WITH 'S-1-1-0' RETURN p",
+          "allowCollapse": true
+        }
+      ]
+    },
+    {
+      "name": "Computers with administrative Domain Users",
+      "queryList": [
+        {
+          "final": true,
+          "query": "MATCH p=(m:Group)-[r:AddMember|AdminTo|AllExtendedRights|AllowedToDelegate|CanRDP|Contains|ExecuteDCOM|ForceChangePassword|GenericAll|GenericWrite|GetChanges|GetChangesAll|HasSession|Owns|ReadLAPSPassword|SQLAdmin|TrustedBy|WriteDACL|WriteOwner|AddAllowedToAct|AllowedToAct]->(t) WHERE m.objectsid ENDS WITH '-513' OR m.objectsid ENDS WITH '-515' OR m.objectsid ENDS WITH 'S-1-5-11' OR m.objectsid ENDS WITH 'S-1-1-0' RETURN p"
+        }
+      ]
+    }
+  ]
+}
+
